@@ -17,8 +17,8 @@ def recvUser():
         print(f"Received inquiry about date from client:")
         connection.send(f"Today's Date is: {datetime.datetime.now()}".encode("utf-8"))
     elif message == 3:
-        print(f"Received inquiry about client name:")
-        connection.send(f"Your name is: {ADDRESS[0]}".encode("utf-8"))
+        print(f"Received inquiry about client IP:")
+        connection.send(f"Your IP address is: {ADDRESS[0]}".encode("utf-8"))
     else:
         print(f"Received invalid inquiry from client:")
         connection.send("Invalid Inquiry".encode("utf-8"))
@@ -31,7 +31,7 @@ print("Server is Online")
 
 serverSocket.listen(3) # Number of Clients available to join this connection
 
-lstOfInquiry = ["what time it is", "what is todays date", "what is my name"]
+lstOfInquiry = ["what time it is", "what is todays date", "what is my IP address"]
 
 while(True):
 
