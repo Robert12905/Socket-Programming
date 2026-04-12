@@ -26,7 +26,7 @@ serverSocket = socket.socket()
 serverSocket.bind(ADDRESS)
 print("Server is Online")
 
-serverSocket.listen(1) # Number of Clients available to join this connection
+serverSocket.listen(3) # Number of Clients available to join this connection
 
 lstOfInquiry = ["what time it is", "what is todays date"]
 
@@ -40,3 +40,4 @@ while(True):
 
     message = "Hello Client, Here are the server's questions:\n" + "\n".join(lstOfInquiry)
     connection.send(message.encode("utf-8"))
+    recvUser()    # Accepts Client Inputs
