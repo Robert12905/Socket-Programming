@@ -16,9 +16,12 @@ response = clientSocket.recv(1024).decode("utf-8")
 print(response)
 
 while True:
-	try:
-		userInput = int(input("Choose a server output: "))
-		clientSocket.send(str(userInput).encode("utf-8"))
+	userInput = input("Choose a server output (1/2): ").strip()
+	if userInput in ("1", "2"):
+		clientSocket.sendall((userInput + "\n").encode("utf-8"))
 		break
-	except:
-		print("Invalid input. Please enter a number.")
+	print("Invalid input. Please enter 1 or 2.")
+
+print(f"Server response -> {clientSocket.recv(1024).decode('utf-8')}")
+clientSocket.close()
+
