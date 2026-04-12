@@ -1,46 +1,56 @@
 import socket
-import time
-import datetime
+import threading
+
+from config import HOST, PORT, BUFFER_SIZE, ENCODING
 
 
-IP_SERVER = "localhost"
-PORT = 9999
-ADDRESS = (IP_SERVER, PORT)
+def handle_client(client_socket: socket.socket, client_address: tuple[str, int]) -> None:
+    """Handle communication with one connected client."""
+    print(f"[NEW CONNECTION] {client_address} connected.")
 
-def recvUser():
-    message = int(connection.recv(1024).decode("utf-8"))
+    try:
+        while True:
+            message = client_socket.recv(BUFFER_SIZE).decode(ENCODING)
 
-    if message == 1:
-        print(f"Received inquiry about time from client:")
-        connection.send(f"The Current Time is: {time.ctime()}".encode("utf-8"))
-    elif message == 2:
-        print(f"Received inquiry about date from client:")
-        connection.send(f"Today's Date is: {datetime.datetime.now()}".encode("utf-8"))
-    elif message == 3:
-        print(f"Received inquiry about client IP:")
-        connection.send(f"Your IP address is: {ADDRESS[0]}".encode("utf-8"))
-    else:
-        print(f"Received invalid inquiry from client:")
-        connection.send("Invalid Inquiry".encode("utf-8"))
+            if not message:
+                print(f"[DISCONNECTED] {client_address} disconnected.")
+                break
 
-serverSocket = socket.socket()
-# As a default, the server uses IPv4 and TCP for connection
+            cleaned_message = message.strip()
+            print(f"[RECEIVED FROM {client_address}] {cleaned_message}")
 
-serverSocket.bind(ADDRESS)
-print("Server is Online")
+            reply = f"Server received: {cleaned_message}"
+            client_socket.sendall(reply.encode(ENCODING))
 
-serverSocket.listen(3) # Number of Clients available to join this connection
+    except ConnectionResetError:
+        print(f"[ERROR] Connection reset by {client_address}.")
+    except Exception as error:
+        print(f"[ERROR] Unexpected error with {client_address}: {error}")
+    finally:
+        client_socket.close()
+        print(f"[CLOSED] Connection with {client_address} closed.")
 
-lstOfInquiry = ["what time it is", "what is todays date", "what is my IP address"]
 
-while(True):
+def start_server() -> None:
+    """Start the socket server and listen for incoming client connections."""
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((HOST, PORT))
+    server_socket.listen()
 
-    connection, ADDRESS = serverSocket.accept() # ADDRESS returns address of client
-    # stores the socket object of the connected device (file) allowing for transfer
-    # of data, pausing until anything is receieved
+    print(f"[LISTENING] Server is listening on {HOST}:{PORT}")
 
-    print(f"Client Connected -> {ADDRESS}")
+    while True:
+        client_socket, client_address = server_socket.accept()
 
-    message = "Hello Client, Here are the server's questions:\n" + "\n".join(lstOfInquiry)
-    connection.send(message.encode("utf-8"))
-    recvUser()
+        client_thread = threading.Thread(
+            target=handle_client,
+            args=(client_socket, client_address),
+            daemon=True,
+        )
+        client_thread.start()
+
+        print(f"[ACTIVE THREADS] {threading.active_count() - 1}")
+
+
+if __name__ == "__main__":
+    start_server()
