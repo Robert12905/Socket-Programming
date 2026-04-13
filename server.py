@@ -3,10 +3,43 @@ import threading
 
 from config import HOST, PORT, BUFFER_SIZE, ENCODING
 
+clients = []
+clients_lock = threading.Lock()
+
+
+def broadcast_message(message: str, sender_socket: socket.socket) -> None:
+    """Send a message to all connected clients except the sender."""
+    with clients_lock:
+        disconnected_clients = []
+
+        for client_socket in clients:
+            if client_socket is sender_socket:
+                continue
+
+            try:
+                client_socket.sendall(message.encode(ENCODING))
+            except Exception:
+                disconnected_clients.append(client_socket)
+
+        for client_socket in disconnected_clients:
+            if client_socket in clients:
+                clients.remove(client_socket)
+                client_socket.close()
+
+
+def remove_client(client_socket: socket.socket) -> None:
+    """Remove a client socket from the active clients list."""
+    with clients_lock:
+        if client_socket in clients:
+            clients.remove(client_socket)
+
 
 def handle_client(client_socket: socket.socket, client_address: tuple[str, int]) -> None:
     """Handle communication with one connected client."""
     print(f"[NEW CONNECTION] {client_address} connected.")
+
+    with clients_lock:
+        clients.append(client_socket)
 
     try:
         while True:
@@ -17,16 +50,17 @@ def handle_client(client_socket: socket.socket, client_address: tuple[str, int])
                 break
 
             cleaned_message = message.strip()
-            print(f"[RECEIVED FROM {client_address}] {cleaned_message}")
+            formatted_message = f"Client {client_address[1]}: {cleaned_message}"
 
-            reply = f"Server received: {cleaned_message}"
-            client_socket.sendall(reply.encode(ENCODING))
+            print(f"[RECEIVED] {formatted_message}")
+            broadcast_message(formatted_message, client_socket)
 
     except ConnectionResetError:
-        print(f"[ERROR] Connection reset by {client_address}.")
+        print(f"[DISCONNECTED] {client_address} disconnected unexpectedly.")
     except Exception as error:
         print(f"[ERROR] Unexpected error with {client_address}: {error}")
     finally:
+        remove_client(client_socket)
         client_socket.close()
         print(f"[CLOSED] Connection with {client_address} closed.")
 
@@ -49,7 +83,7 @@ def start_server() -> None:
         )
         client_thread.start()
 
-        print(f"[ACTIVE THREADS] {threading.active_count() - 1}")
+        print(f"[ACTIVE CLIENTS] {threading.active_count() - 1}")
 
 
 if __name__ == "__main__":
