@@ -43,6 +43,13 @@ def start_client() -> None:
 
     client_socket.sendall(username.encode(ENCODING))
 
+    server_response = client_socket.recv(BUFFER_SIZE).decode(ENCODING)
+
+    if server_response.startswith("[ERROR]"):
+        print(server_response)
+        client_socket.close()
+        return
+
     print(f"[CONNECTED] Connected to server at {HOST}:{PORT}")
     print("Type messages and press Enter to send.")
     print("Type 'quit' to disconnect.\n")

@@ -47,11 +47,22 @@ def handle_client(client_socket: socket.socket, client_address: tuple[str, int])
         received_username = client_socket.recv(BUFFER_SIZE).decode(ENCODING).strip()
         if received_username:
             username = received_username
+        else:
+            username = "Anonymous"
 
         with clients_lock:
+            if username in usernames.values():
+                client_socket.sendall(
+                    "[ERROR] Username already taken. Please choose a different username.".encode(ENCODING)
+                )
+                print(f"[REJECTED] {client_address} tried duplicate username '{username}'.")
+                client_socket.close()
+                return
+
             clients.append(client_socket)
             usernames[client_socket] = username
 
+        client_socket.sendall("[SERVER] Username accepted.".encode(ENCODING))
         print(f"[USERNAME] {client_address} is using username '{username}'.")
         broadcast_message(f"[SERVER] {username} joined the chat.", client_socket)
 
