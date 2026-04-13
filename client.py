@@ -4,24 +4,30 @@ import threading
 from config import HOST, PORT, BUFFER_SIZE, ENCODING
 
 
-def receive_messages(client_socket: socket.socket) -> None:
+def receive_messages(client_socket: socket.socket, connection_closed: threading.Event) -> None:
     """Continuously receive messages from the server."""
     try:
         while True:
             message = client_socket.recv(BUFFER_SIZE).decode(ENCODING)
 
             if not message:
-                print("[DISCONNECTED] Server closed the connection.")
+                if not connection_closed.is_set():
+                    print("[DISCONNECTED] Server closed the connection.")
+                    connection_closed.set()
                 break
 
             print(message)
 
     except (ConnectionResetError, OSError):
-        pass
+        if not connection_closed.is_set():
+            print("[DISCONNECTED] Server closed the connection.")
+            connection_closed.set()
 
     except Exception as error:
-        print(f"[ERROR] Unexpected receive error: {error}")
-        
+        if not connection_closed.is_set():
+            print(f"[ERROR] Unexpected receive error: {error}")
+            connection_closed.set()
+
     finally:
         client_socket.close()
 
@@ -41,9 +47,11 @@ def start_client() -> None:
     print("Type messages and press Enter to send.")
     print("Type 'quit' to disconnect.\n")
 
+    connection_closed = threading.Event()
+
     receive_thread = threading.Thread(
         target=receive_messages,
-        args=(client_socket,),
+        args=(client_socket, connection_closed),
         daemon=True,
     )
     receive_thread.start()
@@ -51,6 +59,9 @@ def start_client() -> None:
     try:
         while True:
             user_input = input()
+
+            if connection_closed.is_set():
+                break
 
             if user_input.strip().lower() == "quit":
                 print("[DISCONNECTING] Closing connection...")
@@ -62,11 +73,15 @@ def start_client() -> None:
         print("\n[DISCONNECTING] Client interrupted by user.")
 
     except OSError:
-        print("[DISCONNECTED] Connection to server was lost.")
+        if not connection_closed.is_set():
+            print("[DISCONNECTED] Connection to server was lost.")
+            connection_closed.set()
 
     except Exception as error:
-        print(f"[ERROR] Unexpected send error: {error}")
-        
+        if not connection_closed.is_set():
+            print(f"[ERROR] Unexpected send error: {error}")
+            connection_closed.set()
+
     finally:
         try:
             client_socket.shutdown(socket.SHUT_RDWR)

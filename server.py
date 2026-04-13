@@ -41,11 +41,12 @@ def handle_client(client_socket: socket.socket, client_address: tuple[str, int])
     """Handle communication with one connected client."""
     print(f"[NEW CONNECTION] {client_address} connected.")
 
-    try:
-        username = client_socket.recv(BUFFER_SIZE).decode(ENCODING).strip()
+    username = f"Client {client_address[1]}"
 
-        if not username:
-            username = f"Client {client_address[1]}"
+    try:
+        received_username = client_socket.recv(BUFFER_SIZE).decode(ENCODING).strip()
+        if received_username:
+            username = received_username
 
         with clients_lock:
             clients.append(client_socket)
@@ -67,16 +68,14 @@ def handle_client(client_socket: socket.socket, client_address: tuple[str, int])
             broadcast_message(formatted_message, client_socket)
 
     except ConnectionResetError:
-        username = usernames.get(client_socket, f"Client {client_address[1]}")
         print(f"[DISCONNECTED] {username} disconnected.")
 
     except OSError:
-        username = usernames.get(client_socket, f"Client {client_address[1]}")
         print(f"[DISCONNECTED] {username} disconnected.")
 
     except Exception as error:
         print(f"[ERROR] Unexpected error with {client_address}: {error}")
-
+        
     finally:
         remove_client(client_socket)
         client_socket.close()
