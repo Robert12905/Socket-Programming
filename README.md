@@ -2,19 +2,25 @@
 
 ## Course Information
 
+Florida Gulf Coast University (FGCU)  
 COP 3635 - Computer Networking  
 Final Project
 
+Instructor: Dr. Deepa Devasenapathy
+
+Project Start Date: April 11, 2026  
+Due Date: April 14, 2026
+
 ## Team Members
 
-- Robert Benstine
-- Chris Cartaya
+- [Robert Benstine](https://github.com/Robert12905)
+- [Chris Cartaya](https://github.com/chris-cartaya)
 
 ---
 
 ## Project Overview
 
-This project is a Python-based socket programming application that will evolve into a **multi-client chat system**.
+This project is a Python-based socket programming application that implements a **multi-client chat system**.
 
 The goal is to allow multiple clients to connect to a server and communicate with each other in real time.
 
@@ -22,12 +28,13 @@ The goal is to allow multiple clients to connect to a server and communicate wit
 
 ## Current Status
 
-- Basic client/server socket communication code is in place
-- Project structure has been cleaned and reorganized
-- Virtual environment setup has been added
-- Shared configuration file (`config.py`) created
-
-This project is currently being refactored into a proper multi-client chat application.
+- Multi-client server with concurrent connections (threaded)
+- Real-time message broadcasting between clients
+- Username system implemented
+- Join/leave notifications
+- Duplicate username protection (server-side validation)
+- Graceful client disconnect and server shutdown handling
+- Shared configuration file (`config.py`)
 
 ---
 
@@ -42,7 +49,7 @@ This project is currently being refactored into a proper multi-client chat appli
 
 ### File Descriptions
 
-- `server.py` - Runs the server. Handles incoming client connections and will eventually manage message broadcasting between clients.
+- `server.py` - Runs the server. Handles client connections, message broadcasting, usernames, and server-side validation logic.
 
 - `client.py` - Connects to the server. Sends user input and receives messages from the server.  
   This single file can be run multiple times (in separate terminals) to simulate multiple clients.
@@ -67,10 +74,30 @@ cd Socket-Programming
 python -m venv .venv
 ```
 
-### 3. Activate virtual environment (Git Bash)
+### 3. Activate virtual environment
+
+#### Git Bash (Windows)
 
 ```bash
 source .venv/Scripts/activate
+```
+
+#### PowerShell (Windows)
+
+```pwsh
+.venv\Scripts\Activate.ps1
+```
+
+#### Command Prompt (Windows)
+
+```cmd
+.venv\Scripts\activate.bat
+```
+
+#### macOS / Linux
+
+```bash
+source .venv/bin/activate
 ```
 
 ---
@@ -89,18 +116,32 @@ python server.py
 python client.py
 ```
 
-You can run multiple clients by opening multiple terminals.
+### Notes
+
+- You can run multiple clients by opening multiple terminals.
+- Each client must enter a unique username.
+- Type `quit` to disconnect from the chat.
 
 ---
 
-## Planned Features
+## Current Features
 
 - Multi-client support (simultaneous connections)
 - Username system
 - Message broadcasting
 - Client join/leave notifications
-- Command support (e.g., /quit, /users)
-- Improved error handling
+- Duplicate username protection
+- Graceful disconnect handling
+
+---
+
+## Future Improvements
+
+- Retry username selection without disconnecting
+- Color-coded usernames for better readability
+- Timestamps for messages
+- Private messaging
+- Active user list command (`/users`)
 
 ---
 
