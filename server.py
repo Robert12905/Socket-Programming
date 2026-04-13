@@ -8,13 +8,13 @@ usernames = {}
 clients_lock = threading.Lock()
 
 
-def broadcast_message(message: str, sender_socket: socket.socket) -> None:
-    """Send a message to all connected clients except the sender."""
+def broadcast_message(message: str, sender_socket: socket.socket | None = None) -> None:
+    """Send a message to all connected clients except the sender, if provided."""
     with clients_lock:
         disconnected_clients = []
 
         for client_socket in clients:
-            if client_socket is sender_socket:
+            if sender_socket is not None and client_socket is sender_socket:
                 continue
 
             try:
@@ -53,12 +53,14 @@ def handle_client(client_socket: socket.socket, client_address: tuple[str, int])
             usernames[client_socket] = username
 
         print(f"[USERNAME] {client_address} is using username '{username}'.")
+        broadcast_message(f"[SERVER] {username} joined the chat.", client_socket)
 
         while True:
             message = client_socket.recv(BUFFER_SIZE).decode(ENCODING)
 
             if not message:
                 print(f"[DISCONNECTED] {username} disconnected.")
+                broadcast_message(f"[SERVER] {username} left the chat.", client_socket)
                 break
 
             cleaned_message = message.strip()
@@ -69,9 +71,11 @@ def handle_client(client_socket: socket.socket, client_address: tuple[str, int])
 
     except ConnectionResetError:
         print(f"[DISCONNECTED] {username} disconnected.")
+        broadcast_message(f"[SERVER] {username} left the chat.", client_socket)
 
     except OSError:
         print(f"[DISCONNECTED] {username} disconnected.")
+        broadcast_message(f"[SERVER] {username} left the chat.", client_socket)
 
     except Exception as error:
         print(f"[ERROR] Unexpected error with {client_address}: {error}")
