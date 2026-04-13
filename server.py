@@ -4,6 +4,7 @@ import threading
 from config import HOST, PORT, BUFFER_SIZE, ENCODING
 
 clients = []
+usernames = {}
 clients_lock = threading.Lock()
 
 
@@ -24,42 +25,54 @@ def broadcast_message(message: str, sender_socket: socket.socket) -> None:
         for client_socket in disconnected_clients:
             if client_socket in clients:
                 clients.remove(client_socket)
+                usernames.pop(client_socket, None)
                 client_socket.close()
 
 
 def remove_client(client_socket: socket.socket) -> None:
-    """Remove a client socket from the active clients list."""
+    """Remove a client socket from the active clients list and username mapping."""
     with clients_lock:
         if client_socket in clients:
             clients.remove(client_socket)
+        usernames.pop(client_socket, None)
 
 
 def handle_client(client_socket: socket.socket, client_address: tuple[str, int]) -> None:
     """Handle communication with one connected client."""
     print(f"[NEW CONNECTION] {client_address} connected.")
 
-    with clients_lock:
-        clients.append(client_socket)
-
     try:
+        username = client_socket.recv(BUFFER_SIZE).decode(ENCODING).strip()
+
+        if not username:
+            username = f"Client {client_address[1]}"
+
+        with clients_lock:
+            clients.append(client_socket)
+            usernames[client_socket] = username
+
+        print(f"[USERNAME] {client_address} is using username '{username}'.")
+
         while True:
             message = client_socket.recv(BUFFER_SIZE).decode(ENCODING)
 
             if not message:
-                print(f"[DISCONNECTED] {client_address} disconnected.")
+                print(f"[DISCONNECTED] {username} disconnected.")
                 break
 
             cleaned_message = message.strip()
-            formatted_message = f"Client {client_address[1]}: {cleaned_message}"
+            formatted_message = f"{username}: {cleaned_message}"
 
             print(f"[RECEIVED] {formatted_message}")
             broadcast_message(formatted_message, client_socket)
 
     except ConnectionResetError:
-        print(f"[DISCONNECTED] {client_address} disconnected.")
+        username = usernames.get(client_socket, f"Client {client_address[1]}")
+        print(f"[DISCONNECTED] {username} disconnected.")
 
     except OSError:
-        print(f"[DISCONNECTED] {client_address} disconnected.")
+        username = usernames.get(client_socket, f"Client {client_address[1]}")
+        print(f"[DISCONNECTED] {username} disconnected.")
 
     except Exception as error:
         print(f"[ERROR] Unexpected error with {client_address}: {error}")
@@ -111,6 +124,7 @@ def start_server() -> None:
                     client_socket.close()
 
             clients.clear()
+            usernames.clear()
 
         server_socket.close()
 

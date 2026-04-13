@@ -17,10 +17,11 @@ def receive_messages(client_socket: socket.socket) -> None:
             print(message)
 
     except (ConnectionResetError, OSError):
-        # This can happen during normal shutdown on Windows.
         pass
+
     except Exception as error:
         print(f"[ERROR] Unexpected receive error: {error}")
+        
     finally:
         client_socket.close()
 
@@ -29,6 +30,12 @@ def start_client() -> None:
     """Connect to the server and allow the user to send messages."""
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_socket.connect((HOST, PORT))
+
+    username = input("Enter username: ").strip()
+    if not username:
+        username = "Anonymous"
+
+    client_socket.sendall(username.encode(ENCODING))
 
     print(f"[CONNECTED] Connected to server at {HOST}:{PORT}")
     print("Type messages and press Enter to send.")
@@ -56,10 +63,10 @@ def start_client() -> None:
 
     except OSError:
         print("[DISCONNECTED] Connection to server was lost.")
-        
+
     except Exception as error:
         print(f"[ERROR] Unexpected send error: {error}")
-
+        
     finally:
         try:
             client_socket.shutdown(socket.SHUT_RDWR)
