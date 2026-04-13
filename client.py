@@ -16,8 +16,9 @@ def receive_messages(client_socket: socket.socket) -> None:
 
             print(message)
 
-    except ConnectionResetError:
-        print("[ERROR] Connection was reset by the server.")
+    except (ConnectionResetError, OSError):
+        # This can happen during normal shutdown on Windows.
+        pass
     except Exception as error:
         print(f"[ERROR] Unexpected receive error: {error}")
     finally:
@@ -52,10 +53,20 @@ def start_client() -> None:
 
     except KeyboardInterrupt:
         print("\n[DISCONNECTING] Client interrupted by user.")
+
+    except OSError:
+        print("[DISCONNECTED] Connection to server was lost.")
+        
     except Exception as error:
         print(f"[ERROR] Unexpected send error: {error}")
+
     finally:
-        client_socket.close()
+        try:
+            client_socket.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+        finally:
+            client_socket.close()
 
 
 if __name__ == "__main__":

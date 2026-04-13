@@ -18,7 +18,7 @@ def broadcast_message(message: str, sender_socket: socket.socket) -> None:
 
             try:
                 client_socket.sendall(message.encode(ENCODING))
-            except Exception:
+            except OSError:
                 disconnected_clients.append(client_socket)
 
         for client_socket in disconnected_clients:
@@ -56,9 +56,14 @@ def handle_client(client_socket: socket.socket, client_address: tuple[str, int])
             broadcast_message(formatted_message, client_socket)
 
     except ConnectionResetError:
-        print(f"[DISCONNECTED] {client_address} disconnected unexpectedly.")
+        print(f"[DISCONNECTED] {client_address} disconnected.")
+
+    except OSError:
+        print(f"[DISCONNECTED] {client_address} disconnected.")
+
     except Exception as error:
         print(f"[ERROR] Unexpected error with {client_address}: {error}")
+
     finally:
         remove_client(client_socket)
         client_socket.close()
@@ -71,19 +76,43 @@ def start_server() -> None:
     server_socket.bind((HOST, PORT))
     server_socket.listen()
 
+    # Prevent accept() from blocking forever, allowing Ctrl+C to be handled
+    server_socket.settimeout(1.0)
+
     print(f"[LISTENING] Server is listening on {HOST}:{PORT}")
 
-    while True:
-        client_socket, client_address = server_socket.accept()
+    try:
+        while True:
+            try:
+                client_socket, client_address = server_socket.accept()
 
-        client_thread = threading.Thread(
-            target=handle_client,
-            args=(client_socket, client_address),
-            daemon=True,
-        )
-        client_thread.start()
+                client_thread = threading.Thread(
+                    target=handle_client,
+                    args=(client_socket, client_address),
+                )
+                client_thread.start()
 
-        print(f"[ACTIVE CLIENTS] {threading.active_count() - 1}")
+                print(f"[ACTIVE CLIENTS] {threading.active_count() - 1}")
+
+            except socket.timeout:
+                pass
+
+    except KeyboardInterrupt:
+        print("\n[SHUTDOWN] Server is shutting down.")
+
+    finally:
+        with clients_lock:
+            for client_socket in clients:
+                try:
+                    client_socket.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+                finally:
+                    client_socket.close()
+
+            clients.clear()
+
+        server_socket.close()
 
 
 if __name__ == "__main__":
