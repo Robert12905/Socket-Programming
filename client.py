@@ -1,7 +1,48 @@
 import socket
 import threading
+import sys
 
 from config import HOST, PORT, BUFFER_SIZE, ENCODING
+
+USER_COLORS = [
+    "\033[91m",
+    "\033[92m",
+    "\033[93m",
+    "\033[94m",
+    "\033[95m",
+    "\033[96m",
+]
+RESET_COLOR = "\033[0m"
+SYSTEM_COLOR = "\033[90m"
+ERROR_COLOR = "\033[91m"
+
+
+def get_username_color(username: str) -> str:
+    """Return a deterministic terminal color for a username."""
+    if not username:
+        return SYSTEM_COLOR
+
+    color_index = sum(ord(char) for char in username) % len(USER_COLORS)
+    return USER_COLORS[color_index]
+
+
+def format_incoming_message(message: str) -> str:
+    """Apply consistent username colors to incoming chat messages."""
+    if not sys.stdout.isatty():
+        return message
+
+    if message.startswith("[ERROR]"):
+        return f"{ERROR_COLOR}{message}{RESET_COLOR}"
+
+    if message.startswith("["):
+        return f"{SYSTEM_COLOR}{message}{RESET_COLOR}"
+
+    if ": " in message:
+        username, content = message.split(": ", 1)
+        username_color = get_username_color(username)
+        return f"{username_color}{username}{RESET_COLOR}: {content}"
+
+    return message
 
 
 def receive_messages(client_socket: socket.socket, connection_closed: threading.Event) -> None:
@@ -16,7 +57,7 @@ def receive_messages(client_socket: socket.socket, connection_closed: threading.
                     connection_closed.set()
                 break
 
-            print(message)
+            print(format_incoming_message(message))
 
     except (ConnectionResetError, OSError):
         if not connection_closed.is_set():
@@ -30,7 +71,6 @@ def receive_messages(client_socket: socket.socket, connection_closed: threading.
 
     finally:
         client_socket.close()
-
 
 def start_client() -> None:
     """Connect to the server and allow the user to send messages."""

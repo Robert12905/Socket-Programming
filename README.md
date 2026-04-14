@@ -34,6 +34,7 @@ The goal is to allow multiple clients to connect to a server and communicate wit
 - Join/leave notifications
 - Duplicate username protection (server-side validation)
 - Graceful client disconnect and server shutdown handling
+- Color-coded server terminal output per username
 - Shared configuration file (`config.py`)
 
 ---
@@ -138,7 +139,6 @@ python client.py
 ## Future Improvements
 
 - Retry username selection without disconnecting
-- Color-coded usernames for better readability
 - Timestamps for messages
 - Private messaging
 - Active user list command (`/users`)

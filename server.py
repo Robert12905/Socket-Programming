@@ -1,11 +1,41 @@
 import socket
 import threading
+import sys
 
 from config import HOST, PORT, BUFFER_SIZE, ENCODING
 
 clients = []
 usernames = {}
 clients_lock = threading.Lock()
+
+USER_COLORS = [
+    "\033[91m",
+    "\033[92m",
+    "\033[93m",
+    "\033[94m",
+    "\033[95m",
+    "\033[96m",
+]
+RESET_COLOR = "\033[0m"
+SYSTEM_COLOR = "\033[90m"
+ERROR_COLOR = "\033[91m"
+
+
+def get_username_color(username: str) -> str:
+    """Return a deterministic terminal color for a username."""
+    if not username:
+        return SYSTEM_COLOR
+
+    color_index = sum(ord(char) for char in username) % len(USER_COLORS)
+    return USER_COLORS[color_index]
+
+
+def print_colored(message: str, color: str = SYSTEM_COLOR) -> None:
+    """Print a message with terminal color support when available."""
+    if sys.stdout.isatty():
+        print(f"{color}{message}{RESET_COLOR}")
+    else:
+        print(message)
 
 
 def broadcast_message(message: str, sender_socket: socket.socket | None = None) -> None:
@@ -39,7 +69,7 @@ def remove_client(client_socket: socket.socket) -> None:
 
 def handle_client(client_socket: socket.socket, client_address: tuple[str, int]) -> None:
     """Handle communication with one connected client."""
-    print(f"[NEW CONNECTION] {client_address} connected.")
+    print_colored(f"[NEW CONNECTION] {client_address} connected.")
 
     username = f"Client {client_address[1]}"
 
@@ -55,7 +85,10 @@ def handle_client(client_socket: socket.socket, client_address: tuple[str, int])
                 client_socket.sendall(
                     "[ERROR] Username already taken. Please choose a different username.".encode(ENCODING)
                 )
-                print(f"[REJECTED] {client_address} tried duplicate username '{username}'.")
+                print_colored(
+                    f"[REJECTED] {client_address} tried duplicate username '{username}'.",
+                    ERROR_COLOR,
+                )
                 client_socket.close()
                 return
 
@@ -63,38 +96,41 @@ def handle_client(client_socket: socket.socket, client_address: tuple[str, int])
             usernames[client_socket] = username
 
         client_socket.sendall("[SERVER] Username accepted.".encode(ENCODING))
-        print(f"[USERNAME] {client_address} is using username '{username}'.")
+        print_colored(
+            f"[USERNAME] {client_address} is using username '{username}'.",
+            get_username_color(username),
+        )
         broadcast_message(f"[SERVER] {username} joined the chat.", client_socket)
 
         while True:
             message = client_socket.recv(BUFFER_SIZE).decode(ENCODING)
 
             if not message:
-                print(f"[DISCONNECTED] {username} disconnected.")
+                print_colored(f"[DISCONNECTED] {username} disconnected.", get_username_color(username))
                 broadcast_message(f"[SERVER] {username} left the chat.", client_socket)
                 break
 
             cleaned_message = message.strip()
             formatted_message = f"{username}: {cleaned_message}"
 
-            print(f"[RECEIVED] {formatted_message}")
+            print_colored(f"[RECEIVED] {formatted_message}", get_username_color(username))
             broadcast_message(formatted_message, client_socket)
 
     except ConnectionResetError:
-        print(f"[DISCONNECTED] {username} disconnected.")
+        print_colored(f"[DISCONNECTED] {username} disconnected.", get_username_color(username))
         broadcast_message(f"[SERVER] {username} left the chat.", client_socket)
 
     except OSError:
-        print(f"[DISCONNECTED] {username} disconnected.")
+        print_colored(f"[DISCONNECTED] {username} disconnected.", get_username_color(username))
         broadcast_message(f"[SERVER] {username} left the chat.", client_socket)
 
     except Exception as error:
-        print(f"[ERROR] Unexpected error with {client_address}: {error}")
+        print_colored(f"[ERROR] Unexpected error with {client_address}: {error}", ERROR_COLOR)
         
     finally:
         remove_client(client_socket)
         client_socket.close()
-        print(f"[CLOSED] Connection with {client_address} closed.")
+        print_colored(f"[CLOSED] Connection with {client_address} closed.", get_username_color(username))
 
 
 def start_server() -> None:
@@ -119,13 +155,13 @@ def start_server() -> None:
                 )
                 client_thread.start()
 
-                print(f"[ACTIVE CLIENTS] {threading.active_count() - 1}")
+                print_colored(f"[ACTIVE CLIENTS] {threading.active_count() - 1}")
 
             except socket.timeout:
                 pass
 
     except KeyboardInterrupt:
-        print("\n[SHUTDOWN] Server is shutting down.")
+        print_colored("\n[SHUTDOWN] Server is shutting down.")
 
     finally:
         with clients_lock:
