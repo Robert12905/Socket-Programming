@@ -33,6 +33,7 @@ def get_username_color(username: str) -> str:
 def print_colored(message: str, color: str = SYSTEM_COLOR) -> None:
     """Print a message with terminal color support when available."""
     if sys.stdout.isatty():
+        # Only apply color if the output is in an interactive terminal
         print(f"{color}{message}{RESET_COLOR}")
     else:
         print(message)
@@ -58,14 +59,12 @@ def broadcast_message(message: str, sender_socket: socket.socket | None = None) 
                 usernames.pop(client_socket, None)
                 client_socket.close()
 
-
 def remove_client(client_socket: socket.socket) -> None:
     """Remove a client socket from the active clients list and username mapping."""
     with clients_lock:
         if client_socket in clients:
             clients.remove(client_socket)
         usernames.pop(client_socket, None)
-
 
 def handle_client(client_socket: socket.socket, client_address: tuple[str, int]) -> None:
     """Handle communication with one connected client."""
@@ -132,7 +131,6 @@ def handle_client(client_socket: socket.socket, client_address: tuple[str, int])
         client_socket.close()
         print_colored(f"[CLOSED] Connection with {client_address} closed.", get_username_color(username))
 
-
 def start_server() -> None:
     """Start the socket server and listen for incoming client connections."""
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -177,7 +175,6 @@ def start_server() -> None:
             usernames.clear()
 
         server_socket.close()
-
 
 if __name__ == "__main__":
     start_server()
